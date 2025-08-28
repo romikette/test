@@ -1,64 +1,79 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>PDF Viewer 800x450</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <style>
-    body { display: flex; flex-direction: column; align-items: center; margin: 10px; font-family: sans-serif; }
-    #pdf-container { text-align: center; width: 800px; }
-    canvas { border: 1px solid #ccc; width: 800px; height: 450px; }
-    .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; justify-content: center; }
-    button { padding: 5px 10px; }
-  </style>
-</head>
-<body>
+<div id="pdf-viewer-widget">
   <h2>PDF Viewer (800×450)</h2>
-  <div id="pdf-container">
-    <canvas id="pdf-render" width="800" height="450"></canvas>
-    <div class="controls">
-      <button id="prev">Prev</button>
-      <span id="page-info">–</span>
-      <button id="next">Next</button>
+  <div id="pdf-container-widget">
+    <canvas id="pdf-render-widget" width="800" height="450"></canvas>
+    <div class="controls-widget">
+      <button id="prev-widget">Prev</button>
+      <span id="page-info-widget">–</span>
+      <button id="next-widget">Next</button>
     </div>
   </div>
+</div>
 
-  <script>
-    window.onload = function() {
-      const url = 'https://raw.githubusercontent.com/kabosmonalisa/pdf/main/PowerToFly_%20The%20Funnel%20Fix%20(22).pdf';
-      let pdfDoc = null, pageNum = 1;
-      const canvas = document.getElementById('pdf-render');
-      const ctx = canvas.getContext('2d');
-      const info = document.getElementById('page-info');
-      const prevBtn = document.getElementById('prev');
-      const nextBtn = document.getElementById('next');
+<style>
+  #pdf-viewer-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 10px;
+    font-family: sans-serif;
+  }
+  #pdf-viewer-widget #pdf-container-widget {
+    text-align: center;
+    width: 800px;
+  }
+  #pdf-viewer-widget #pdf-render-widget {
+    border: 1px solid #ccc;
+    width: 800px;
+    height: 450px;
+  }
+  #pdf-viewer-widget .controls-widget {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+    justify-content: center;
+  }
+  #pdf-viewer-widget .controls-widget button {
+    padding: 5px 10px;
+  }
+</style>
 
-      pdfjsLib.getDocument(url).promise.then(doc => {
-        pdfDoc = doc;
-        renderPage(pageNum);
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  (function() {
+    const url = 'https://raw.githubusercontent.com/kabosmonalisa/pdf/main/PowerToFly_%20The%20Funnel%20Fix%20(22).pdf';
+    let pdfDoc = null, pageNum = 1;
+    const canvas = document.getElementById('pdf-render-widget');
+    const ctx = canvas.getContext('2d');
+    const info = document.getElementById('page-info-widget');
+    const prevBtn = document.getElementById('prev-widget');
+    const nextBtn = document.getElementById('next-widget');
+
+    pdfjsLib.getDocument(url).promise.then(doc => {
+      pdfDoc = doc;
+      renderPage(pageNum);
+    });
+
+    function renderPage(num) {
+      pdfDoc.getPage(num).then(page => {
+        const viewport = page.getViewport({ scale: 1 });
+        const scaleX = canvas.width / viewport.width;
+        const scaleY = canvas.height / viewport.height;
+        const scale = Math.min(scaleX, scaleY);
+        const scaledViewport = page.getViewport({ scale });
+
+        canvas.width = scaledViewport.width;
+        canvas.height = scaledViewport.height;
+        page.render({ canvasContext: ctx, viewport: scaledViewport });
+
+        info.textContent = `Page ${num} / ${pdfDoc.numPages}`;
+        prevBtn.disabled = num <= 1;
+        nextBtn.disabled = num >= pdfDoc.numPages;
       });
+    }
 
-      function renderPage(num) {
-        pdfDoc.getPage(num).then(page => {
-          const viewport = page.getViewport({ scale: 1 });
-          const scaleX = canvas.width / viewport.width;
-          const scaleY = canvas.height / viewport.height;
-          const scale = Math.min(scaleX, scaleY);
-          const scaledViewport = page.getViewport({ scale });
-
-          canvas.width = scaledViewport.width;
-          canvas.height = scaledViewport.height;
-          page.render({ canvasContext: ctx, viewport: scaledViewport });
-
-          info.textContent = `Page ${num} / ${pdfDoc.numPages}`;
-          prevBtn.disabled = num <= 1;
-          nextBtn.disabled = num >= pdfDoc.numPages;
-        });
-      }
-
-      prevBtn.onclick = () => { if (pageNum > 1) renderPage(--pageNum); };
-      nextBtn.onclick = () => { if (pageNum < pdfDoc.numPages) renderPage(++pageNum); };
-    };
-  </script>
-</body>
-</html>
+    prevBtn.onclick = () => { if (pageNum > 1) renderPage(--pageNum); };
+    nextBtn.onclick = () => { if (pageNum < pdfDoc.numPages) renderPage(++pageNum); };
+  })();
+</script>
