@@ -1,11 +1,19 @@
 <div id="pdf-viewer-widget">
-  <h2>PDF Viewer (800×450)</h2>
   <div id="pdf-container-widget">
     <canvas id="pdf-render-widget" width="800" height="450"></canvas>
-    <div class="controls-widget">
+    
+    <!-- Controls for both modes -->
+    <div class="controls-widget" id="controls-widget">
       <button id="prev-widget">Prev</button>
       <span id="page-info-widget">–</span>
       <button id="next-widget">Next</button>
+      <button id="fullscreen-widget">Full Screen</button>
+    </div>
+
+    <!-- Exit fullscreen arrows -->
+    <div id="fullscreen-exit-arrows" style="display:none;">
+      <div class="arrow top-right">⇆</div>
+      <div class="arrow bottom-left">⇆</div>
     </div>
   </div>
 </div>
@@ -15,65 +23,142 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin: 10px;
     font-family: sans-serif;
+    margin: 10px;
   }
-  #pdf-viewer-widget #pdf-container-widget {
-    text-align: center;
-    width: 800px;
-  }
-  #pdf-viewer-widget #pdf-render-widget {
-    border: 1px solid #ccc;
+  #pdf-container-widget {
+    position: relative;
     width: 800px;
     height: 450px;
+    background: #f8f8f8;
   }
-  #pdf-viewer-widget .controls-widget {
+  #pdf-render-widget {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: 1px solid #ccc;
+  }
+
+  /* Controls */
+  .controls-widget {
     display: flex;
     gap: 10px;
     align-items: center;
-    margin-bottom: 20px;
     justify-content: center;
-  }
-  #pdf-viewer-widget .controls-widget button {
+    margin-top: 10px;
     padding: 5px 10px;
+    border-radius: 5px;
+    z-index: 10;
+    position: static; /* normal mode under canvas */
   }
+  .controls-widget.fullscreen {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .controls-widget button {
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    border: none;
+    background: #333;
+    color: white;
+  }
+  .controls-widget span {
+    min-width: 50px;
+    text-align: center;
+    color: white;
+  }
+  
+  #page-info-widget {
+    color: black;
+  }
+
+  /* Fullscreen exit arrows */
+  #fullscreen-exit-arrows .arrow {
+    position: absolute;
+    font-size: 20px;
+    color: white;
+    background: rgba(0,0,0,0.5);
+    padding: 5px;
+    border-radius: 3px;
+    cursor: pointer;
+    z-index: 15;
+  }
+  #fullscreen-exit-arrows .top-right { top: 10px; right: 10px; }
+  #fullscreen-exit-arrows .bottom-left { bottom: 10px; left: 10px; }
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-  (function() {
-    const url = 'https://raw.githubusercontent.com/kabosmonalisa/pdf/main/PowerToFly_%20The%20Funnel%20Fix%20(22).pdf';
-    let pdfDoc = null, pageNum = 1;
-    const canvas = document.getElementById('pdf-render-widget');
-    const ctx = canvas.getContext('2d');
-    const info = document.getElementById('page-info-widget');
-    const prevBtn = document.getElementById('prev-widget');
-    const nextBtn = document.getElementById('next-widget');
+(function(){
+  const url = 'https://raw.githubusercontent.com/kabosmonalisa/pdf/main/PowerToFly_%20The%20Funnel%20Fix%20(22).pdf';
+  let pdfDoc = null, pageNum = 1;
+  const canvas = document.getElementById('pdf-render-widget');
+  const ctx = canvas.getContext('2d');
+  const info = document.getElementById('page-info-widget');
+  const prevBtn = document.getElementById('prev-widget');
+  const nextBtn = document.getElementById('next-widget');
+  const fullscreenBtn = document.getElementById('fullscreen-widget');
+  const controls = document.getElementById('controls-widget');
+  const exitArrows = document.getElementById('fullscreen-exit-arrows');
+  const container = document.getElementById('pdf-container-widget');
 
-    pdfjsLib.getDocument(url).promise.then(doc => {
-      pdfDoc = doc;
-      renderPage(pageNum);
+  pdfjsLib.getDocument(url).promise.then(doc => {
+    pdfDoc = doc;
+    renderPage(pageNum);
+    window.addEventListener('resize', () => renderPage(pageNum));
+  });
+
+  function renderPage(num){
+    pdfDoc.getPage(num).then(page => {
+      const viewport = page.getViewport({scale:1}); // rotation-aware
+      const pixelRatio = window.devicePixelRatio || 1;
+      let scale;
+
+      if(document.fullscreenElement){
+        const ratio = Math.min(window.innerWidth / viewport.width, window.innerHeight / viewport.height);
+        scale = ratio * pixelRatio;
+      } else {
+        scale = Math.min(canvas.clientWidth / viewport.width, canvas.clientHeight / viewport.height) * pixelRatio;
+      }
+
+      const scaledViewport = page.getViewport({scale});
+      canvas.width = scaledViewport.width;
+      canvas.height = scaledViewport.height;
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+
+      page.render({canvasContext:ctx, viewport:scaledViewport});
+
+      info.textContent = `Page ${num} / ${pdfDoc.numPages}`;
+      prevBtn.disabled = num <= 1;
+      nextBtn.disabled = num >= pdfDoc.numPages;
     });
+  }
 
-    function renderPage(num) {
-      pdfDoc.getPage(num).then(page => {
-        const viewport = page.getViewport({ scale: 1 });
-        const scaleX = canvas.width / viewport.width;
-        const scaleY = canvas.height / viewport.height;
-        const scale = Math.min(scaleX, scaleY);
-        const scaledViewport = page.getViewport({ scale });
+  prevBtn.onclick = ()=>{if(pageNum>1) renderPage(--pageNum)};
+  nextBtn.onclick = ()=>{if(pageNum<pdfDoc.numPages) renderPage(++pageNum)};
 
-        canvas.width = scaledViewport.width;
-        canvas.height = scaledViewport.height;
-        page.render({ canvasContext: ctx, viewport: scaledViewport });
+  fullscreenBtn.onclick = ()=>{
+    container.requestFullscreen();
+    controls.classList.add('fullscreen'); // move controls on top
+    exitArrows.style.display='block';
+    setTimeout(()=>renderPage(pageNum),100);
+  };
 
-        info.textContent = `Page ${num} / ${pdfDoc.numPages}`;
-        prevBtn.disabled = num <= 1;
-        nextBtn.disabled = num >= pdfDoc.numPages;
-      });
+  // Exit fullscreen arrows
+  exitArrows.querySelectorAll('.arrow').forEach(arrow=>{
+    arrow.onclick = ()=>{document.exitFullscreen();}
+  });
+
+  document.addEventListener('fullscreenchange',()=>{
+    if(!document.fullscreenElement){
+      controls.classList.remove('fullscreen'); // back to normal under canvas
+      exitArrows.style.display='none';
+      renderPage(pageNum);
     }
-
-    prevBtn.onclick = () => { if (pageNum > 1) renderPage(--pageNum); };
-    nextBtn.onclick = () => { if (pageNum < pdfDoc.numPages) renderPage(++pageNum); };
-  })();
+  });
+})();
 </script>
