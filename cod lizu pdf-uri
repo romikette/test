@@ -2,20 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Responsive PDF Viewer</title>
+  <title>PDF Viewer 800x450</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     body { display: flex; flex-direction: column; align-items: center; margin: 10px; font-family: sans-serif; }
-    #pdf-container { text-align: center; max-width: 95vw; }
-    canvas { border: 1px solid #ccc; margin-bottom: 10px; width: 100%; height: auto; }
-    .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+    #pdf-container { text-align: center; width: 800px; }
+    canvas { border: 1px solid #ccc; width: 800px; height: 450px; }
+    .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; justify-content: center; }
     button { padding: 5px 10px; }
   </style>
 </head>
 <body>
-  <h2>PDF Viewer</h2>
+  <h2>PDF Viewer (800×450)</h2>
   <div id="pdf-container">
-    <canvas id="pdf-render"></canvas>
+    <canvas id="pdf-render" width="800" height="450"></canvas>
     <div class="controls">
       <button id="prev">Prev</button>
       <span id="page-info">–</span>
@@ -36,17 +36,16 @@
       pdfjsLib.getDocument(url).promise.then(doc => {
         pdfDoc = doc;
         renderPage(pageNum);
-        window.addEventListener('resize', () => renderPage(pageNum));
       });
 
       function renderPage(num) {
         pdfDoc.getPage(num).then(page => {
-          // scale page to fit container width
-          const containerWidth = document.getElementById('pdf-container').clientWidth;
           const viewport = page.getViewport({ scale: 1 });
-          const scale = containerWidth / viewport.width;
+          const scaleX = canvas.width / viewport.width;
+          const scaleY = canvas.height / viewport.height;
+          const scale = Math.min(scaleX, scaleY);
           const scaledViewport = page.getViewport({ scale });
-          
+
           canvas.width = scaledViewport.width;
           canvas.height = scaledViewport.height;
           page.render({ canvasContext: ctx, viewport: scaledViewport });
