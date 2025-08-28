@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Responsive PDF Viewer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    body { display: flex; flex-direction: column; align-items: center; margin: 10px; font-family: sans-serif; }
+    #pdf-container { text-align: center; max-width: 95vw; }
+    canvas { border: 1px solid #ccc; margin-bottom: 10px; width: 100%; height: auto; }
+    .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+    button { padding: 5px 10px; }
+  </style>
+</head>
+<body>
+  <h2>PDF Viewer</h2>
+  <div id="pdf-container">
+    <canvas id="pdf-render"></canvas>
+    <div class="controls">
+      <button id="prev">Prev</button>
+      <span id="page-info">–</span>
+      <button id="next">Next</button>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      const url = 'https://raw.githubusercontent.com/kabosmonalisa/pdf/main/PowerToFly_%20The%20Funnel%20Fix%20(22).pdf';
+      let pdfDoc = null, pageNum = 1;
+      const canvas = document.getElementById('pdf-render');
+      const ctx = canvas.getContext('2d');
+      const info = document.getElementById('page-info');
+      const prevBtn = document.getElementById('prev');
+      const nextBtn = document.getElementById('next');
+
+      pdfjsLib.getDocument(url).promise.then(doc => {
+        pdfDoc = doc;
+        renderPage(pageNum);
+        window.addEventListener('resize', () => renderPage(pageNum));
+      });
+
+      function renderPage(num) {
+        pdfDoc.getPage(num).then(page => {
+          // scale page to fit container width
+          const containerWidth = document.getElementById('pdf-container').clientWidth;
+          const viewport = page.getViewport({ scale: 1 });
+          const scale = containerWidth / viewport.width;
+          const scaledViewport = page.getViewport({ scale });
+          
+          canvas.width = scaledViewport.width;
+          canvas.height = scaledViewport.height;
+          page.render({ canvasContext: ctx, viewport: scaledViewport });
+
+          info.textContent = `Page ${num} / ${pdfDoc.numPages}`;
+          prevBtn.disabled = num <= 1;
+          nextBtn.disabled = num >= pdfDoc.numPages;
+        });
+      }
+
+      prevBtn.onclick = () => { if (pageNum > 1) renderPage(--pageNum); };
+      nextBtn.onclick = () => { if (pageNum < pdfDoc.numPages) renderPage(++pageNum); };
+    };
+  </script>
+</body>
+</html>
